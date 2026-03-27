@@ -17,6 +17,8 @@ const tabsEl = document.querySelector("#dataset-tabs");
 const uploadPanelEl = document.querySelector("#upload-panel");
 const uploadInputEl = document.querySelector("#csv-upload");
 const uploadStatusEl = document.querySelector("#upload-status");
+const resetUploadEl = document.querySelector("#reset-upload");
+const clearUploadsEl = document.querySelector("#clear-uploads");
 const dashboardEl = document.querySelector("#dashboard");
 const summaryGridEl = document.querySelector("#summary-grid");
 const headlineInsightsEl = document.querySelector("#headline-insights");
@@ -88,6 +90,14 @@ function bindUploadEvents() {
     }
 
     processUploadFile(file);
+  });
+
+  resetUploadEl.addEventListener("click", () => {
+    resetUploadForm();
+  });
+
+  clearUploadsEl.addEventListener("click", () => {
+    removeAllUploadedDatasets();
   });
 }
 
@@ -437,9 +447,16 @@ function renderTabs() {
   const datasetButtons = state.datasets
     .map(
       (dataset) => `
-        <button class="tab-button ${state.activeMode === "dataset" && state.activeId === dataset.id ? "active" : ""}" data-tab-id="${dataset.id}">
-          ${escapeHtml(dataset.name)}
-        </button>
+        <div class="tab-chip">
+          <button class="tab-button dataset ${state.activeMode === "dataset" && state.activeId === dataset.id ? "active" : ""}" data-tab-id="${dataset.id}">
+            ${escapeHtml(dataset.name)}
+          </button>
+          ${
+            dataset.builtIn
+              ? ""
+              : `<button type="button" class="tab-remove" aria-label="Remove ${escapeHtml(dataset.name)}" data-remove-id="${dataset.id}">×</button>`
+          }
+        </div>
       `,
     )
     .join("");
@@ -466,6 +483,15 @@ function renderTabs() {
       renderActiveDataset();
     });
   });
+
+  tabsEl.querySelectorAll("[data-remove-id]").forEach((control) => {
+    const removeHandler = (event) => {
+      event.stopPropagation();
+      removeDataset(control.getAttribute("data-remove-id"));
+    };
+
+    control.addEventListener("click", removeHandler);
+  });
 }
 
 function showUploadPanel() {
@@ -473,6 +499,58 @@ function showUploadPanel() {
   uploadPanelEl.hidden = false;
   dashboardEl.hidden = true;
   renderTabs();
+}
+
+function resetUploadForm() {
+  uploadInputEl.value = "";
+  uploadStatusEl.textContent = "";
+  const dropzone = document.querySelector(".upload-dropzone");
+  dropzone?.classList.remove("is-dragging");
+}
+
+function removeDataset(datasetId) {
+  const dataset = state.datasets.find((entry) => entry.id === datasetId);
+  if (!dataset || dataset.builtIn) {
+    return;
+  }
+
+  state.datasets = state.datasets.filter((entry) => entry.id !== datasetId);
+  delete state.selectedTimelinePoints[datasetId];
+  persistUploadedDatasets();
+  uploadStatusEl.textContent = `"${dataset.name}" was removed.`;
+
+  if (state.activeId === datasetId) {
+    state.activeId = state.datasets[0]?.id ?? null;
+    state.activeMode = state.activeId ? "dataset" : "upload";
+  }
+
+  renderTabs();
+  if (state.activeMode === "dataset") {
+    renderActiveDataset();
+  } else {
+    showUploadPanel();
+  }
+}
+
+function removeAllUploadedDatasets() {
+  const uploadedIds = state.datasets.filter((dataset) => !dataset.builtIn).map((dataset) => dataset.id);
+  if (!uploadedIds.length) {
+    uploadStatusEl.textContent = "There are no uploaded tabs to remove.";
+    resetUploadForm();
+    return;
+  }
+
+  state.datasets = state.datasets.filter((dataset) => dataset.builtIn);
+  uploadedIds.forEach((datasetId) => {
+    delete state.selectedTimelinePoints[datasetId];
+  });
+  state.activeId = state.datasets[0]?.id ?? null;
+  state.activeMode = state.activeId ? "dataset" : "upload";
+  persistUploadedDatasets();
+  resetUploadForm();
+  uploadStatusEl.textContent = "All uploaded tabs were removed.";
+  renderTabs();
+  renderActiveDataset();
 }
 
 function renderActiveDataset() {

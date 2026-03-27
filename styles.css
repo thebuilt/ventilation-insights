@@ -121,6 +121,12 @@ td,
   margin-bottom: 16px;
 }
 
+.tab-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .tab-button {
   border: 0;
   border-radius: 999px;
@@ -130,6 +136,32 @@ td,
   font: inherit;
   cursor: pointer;
   transition: transform 180ms ease, background 180ms ease, color 180ms ease;
+}
+
+.tab-button.dataset {
+  display: inline-flex;
+  align-items: center;
+}
+
+.tab-remove {
+  border: 0;
+  background: rgba(24, 35, 31, 0.08);
+  color: inherit;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.tab-remove:hover,
+.tab-remove:focus-visible {
+  background: rgba(199, 75, 42, 0.18);
+  outline: none;
 }
 
 .tab-button:hover,
@@ -187,6 +219,38 @@ td,
 #csv-upload {
   width: 100%;
   margin-top: 16px;
+}
+
+.upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.action-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font: inherit;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.action-button:hover,
+.action-button:focus-visible {
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.action-button-muted {
+  background: rgba(24, 35, 31, 0.08);
+  color: var(--ink);
+}
+
+.action-button-danger {
+  background: rgba(199, 75, 42, 0.14);
+  color: var(--alert);
 }
 
 #dashboard {
