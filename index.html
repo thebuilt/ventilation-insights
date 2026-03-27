@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ventilation Peaks Explorer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Respiratory Waiting Area CO2 Review</p>
+          <h1>Ventilation Peaks Explorer</h1>
+          <p class="hero-copy">
+            Built to surface when CO2 rises, how long it stays elevated, and
+            where intervention windows are most actionable.
+          </p>
+        </div>
+        <div class="hero-note">
+          <p class="hero-note-label">Clinical lens</p>
+          <p>
+            CO2 is treated here as a ventilation surrogate. The app flags
+            sustained buildup, sharp rises, and repeatable high-risk periods.
+          </p>
+        </div>
+      </header>
+
+      <section class="tab-panel">
+        <div class="tab-row" id="dataset-tabs" aria-label="Dataset tabs"></div>
+        <div class="upload-tab-panel" id="upload-panel" hidden>
+          <div class="upload-card">
+            <h2>Add Another CSV</h2>
+            <p>
+              Upload a file with `DATE`, `TIME`, and `CO2` columns. `TEMP` and
+              `HUMIDITY` are optional. Each upload becomes its own analysis tab.
+            </p>
+            <label class="upload-dropzone" for="csv-upload">
+              <span>Choose a CSV or drop one here</span>
+              <span class="upload-hint">Tabs are also stored in your browser.</span>
+            </label>
+            <input id="csv-upload" type="file" accept=".csv,text/csv" />
+            <div class="upload-status" id="upload-status"></div>
+          </div>
+        </div>
+      </section>
+
+      <main id="dashboard" hidden>
+        <section class="summary-grid" id="summary-grid"></section>
+
+        <section class="insight-grid">
+          <article class="panel">
+            <div class="panel-heading">
+              <p class="panel-kicker">What stands out</p>
+              <h2>High-yield insights</h2>
+            </div>
+            <div id="headline-insights" class="stack-list"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-heading">
+              <p class="panel-kicker">Operational use</p>
+              <h2>Intervention windows</h2>
+            </div>
+            <div id="intervention-list" class="stack-list"></div>
+          </article>
+        </section>
+
+        <section class="chart-grid">
+          <article class="panel chart-panel">
+            <div class="panel-heading">
+              <p class="panel-kicker">Across the recording period</p>
+              <h2>CO2 timeline</h2>
+            </div>
+            <div id="timeline-chart" class="chart-frame"></div>
+          </article>
+
+          <article class="panel chart-panel">
+            <div class="panel-heading">
+              <p class="panel-kicker">Recurring timing</p>
+              <h2>Hourly risk profile</h2>
+            </div>
+            <div id="hourly-chart" class="chart-frame"></div>
+          </article>
+        </section>
+
+        <section class="table-grid">
+          <article class="panel">
+            <div class="panel-heading">
+              <p class="panel-kicker">Sustained events</p>
+              <h2>Peak episodes</h2>
+            </div>
+            <div id="episode-table"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <p class="panel-kicker">Day-by-day</p>
+              <h2>Daily ventilation picture</h2>
+            </div>
+            <div id="daily-table"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
