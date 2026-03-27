@@ -10,6 +10,7 @@ const state = {
   datasets: [],
   activeId: null,
   activeMode: "dataset",
+  selectedTimelinePoints: {},
 };
 
 const tabsEl = document.querySelector("#dataset-tabs");
@@ -576,9 +577,29 @@ function renderTimelineChart(dataset) {
   const maxCo2 = Math.max(1300, ...records.map((record) => record.co2));
   const xScale = (value) => margin.left + ((value - minTime) / (maxTime - minTime || 1)) * innerWidth;
   const yScale = (value) => margin.top + innerHeight - (value / maxCo2) * innerHeight;
-  const path = records
-    .map((record, index) => `${index === 0 ? "M" : "L"} ${xScale(record.timestamp.getTime()).toFixed(2)} ${yScale(record.co2).toFixed(2)}`)
-    .join(" ");
+  const peakIndex = records.reduce(
+    (bestIndex, record, index) => (record.co2 > records[bestIndex].co2 ? index : bestIndex),
+    0,
+  );
+  const selectedIndex = state.selectedTimelinePoints[dataset.id] ?? peakIndex;
+  const selectedRecord = records[selectedIndex];
+  const lineSegments = buildTimelineSegments(records, xScale, yScale);
+  const dayNightBands = buildDayNightBands(records[0].timestamp, records[records.length - 1].timestamp, xScale, height, margin);
+  const pointsMarkup = records
+    .map((record, index) => {
+      const isDay = isDaytime(record.timestamp);
+      return `
+        <circle
+          class="timeline-point ${isDay ? "day" : "night"} ${index === selectedIndex ? "selected" : ""}"
+          cx="${xScale(record.timestamp.getTime()).toFixed(2)}"
+          cy="${yScale(record.co2).toFixed(2)}"
+          r="${index === selectedIndex ? 4.8 : 2.4}"
+          data-point-index="${index}"
+          tabindex="0"
+        ></circle>
+      `;
+    })
+    .join("");
 
   const thresholdMarkup = [
     { value: 800, color: "#d78812", label: "800 ppm" },
@@ -615,16 +636,35 @@ function renderTimelineChart(dataset) {
     .join("");
 
   timelineChartEl.innerHTML = `
+    <div class="timeline-meta">
+      <div class="timeline-legend">
+        <span class="legend-chip day">Day: 8 AM to 8 PM</span>
+        <span class="legend-chip night">Night: 8 PM to 8 AM</span>
+      </div>
+      <div class="timeline-detail" id="timeline-detail">
+        ${renderTimelineDetail(selectedRecord)}
+      </div>
+    </div>
     <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="CO2 timeline">
+      ${dayNightBands}
       ${yTicks}
       ${xTicks}
       ${thresholdMarkup}
-      <path class="timeline-line" d="${path}"></path>
+      ${lineSegments
+        .map(
+          (segment) => `
+            <path class="timeline-line ${segment.mode}" d="${segment.path}"></path>
+          `,
+        )
+        .join("")}
+      ${pointsMarkup}
       <text class="chart-note" x="${margin.left}" y="${height - 8}">
         ${escapeHtml(dataset.name)} from ${formatDateTime(dataset.analysis.summary.start)} to ${formatDateTime(dataset.analysis.summary.end)}
       </text>
     </svg>
   `;
+
+  bindTimelineInteractions(dataset);
 }
 
 function renderHourlyChart(dataset) {
@@ -760,6 +800,158 @@ function loadStoredDatasets() {
   } catch {
     return [];
   }
+}
+
+function bindTimelineInteractions(dataset) {
+  const svg = timelineChartEl.querySelector("svg");
+  const detail = timelineChartEl.querySelector("#timeline-detail");
+  if (!svg || !detail) {
+    return;
+  }
+
+  const activatePoint = (pointIndex) => {
+    const record = dataset.records[pointIndex];
+    if (!record) {
+      return;
+    }
+
+    state.selectedTimelinePoints[dataset.id] = pointIndex;
+    svg.querySelectorAll(".timeline-point.selected").forEach((point) => {
+      point.classList.remove("selected");
+      point.setAttribute("r", "2.4");
+    });
+    const selectedPoint = svg.querySelector(`[data-point-index="${pointIndex}"]`);
+    if (selectedPoint) {
+      selectedPoint.classList.add("selected");
+      selectedPoint.setAttribute("r", "4.8");
+    }
+    detail.innerHTML = renderTimelineDetail(record);
+  };
+
+  svg.addEventListener("click", (event) => {
+    const point = event.target.closest(".timeline-point");
+    if (!point) {
+      return;
+    }
+
+    activatePoint(Number(point.getAttribute("data-point-index")));
+  });
+
+  svg.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    const point = event.target.closest(".timeline-point");
+    if (!point) {
+      return;
+    }
+
+    event.preventDefault();
+    activatePoint(Number(point.getAttribute("data-point-index")));
+  });
+}
+
+function buildTimelineSegments(records, xScale, yScale) {
+  if (!records.length) {
+    return [];
+  }
+
+  const segments = [];
+  let currentMode = isDaytime(records[0].timestamp) ? "day" : "night";
+  let currentPath = [
+    `M ${xScale(records[0].timestamp.getTime()).toFixed(2)} ${yScale(records[0].co2).toFixed(2)}`,
+  ];
+
+  for (let index = 1; index < records.length; index += 1) {
+    const previous = records[index - 1];
+    const record = records[index];
+    const mode = isDaytime(record.timestamp) ? "day" : "night";
+    const pointCommand = `L ${xScale(record.timestamp.getTime()).toFixed(2)} ${yScale(record.co2).toFixed(2)}`;
+
+    if (mode === currentMode) {
+      currentPath.push(pointCommand);
+      continue;
+    }
+
+    segments.push({ mode: currentMode, path: currentPath.join(" ") });
+    currentMode = mode;
+    currentPath = [
+      `M ${xScale(previous.timestamp.getTime()).toFixed(2)} ${yScale(previous.co2).toFixed(2)}`,
+      pointCommand,
+    ];
+  }
+
+  segments.push({ mode: currentMode, path: currentPath.join(" ") });
+  return segments;
+}
+
+function buildDayNightBands(startTime, endTime, xScale, chartHeight, margin) {
+  const markup = [];
+  let cursor = new Date(startTime);
+
+  while (cursor < endTime) {
+    const nextBoundary = nextDayNightBoundary(cursor);
+    const segmentEnd = nextBoundary < endTime ? nextBoundary : endTime;
+    const x = xScale(cursor.getTime());
+    const bandWidth = Math.max(0, xScale(segmentEnd.getTime()) - x);
+    markup.push(`
+      <rect
+        class="day-night-band ${isDaytime(cursor) ? "day" : "night"}"
+        x="${x}"
+        y="${margin.top}"
+        width="${bandWidth}"
+        height="${chartHeight - margin.top - margin.bottom}"
+      ></rect>
+    `);
+    cursor = new Date(segmentEnd.getTime());
+    cursor.setSeconds(cursor.getSeconds() + 1);
+  }
+
+  return markup.join("");
+}
+
+function nextDayNightBoundary(date) {
+  const boundary = new Date(date);
+  boundary.setSeconds(0, 0);
+  const hour = boundary.getHours();
+
+  if (hour < 8) {
+    boundary.setHours(8, 0, 0, 0);
+    return boundary;
+  }
+
+  if (hour < 20) {
+    boundary.setHours(20, 0, 0, 0);
+    return boundary;
+  }
+
+  boundary.setDate(boundary.getDate() + 1);
+  boundary.setHours(8, 0, 0, 0);
+  return boundary;
+}
+
+function isDaytime(date) {
+  const hour = date.getHours();
+  return hour >= 8 && hour < 20;
+}
+
+function renderTimelineDetail(record) {
+  const metrics = [
+    `<strong>${formatPpm(record.co2)}</strong>`,
+    `${formatDateTime(record.timestamp)}`,
+    isDaytime(record.timestamp) ? "Day period" : "Night period",
+  ];
+
+  if (record.temp !== null) {
+    metrics.push(`Temp ${record.temp.toFixed(1)} C`);
+  }
+
+  if (record.humidity !== null) {
+    metrics.push(`Humidity ${record.humidity.toFixed(1)}%`);
+  }
+
+  return metrics.join(" · ");
 }
 
 function persistUploadedDatasets() {

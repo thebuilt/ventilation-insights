@@ -294,6 +294,52 @@ td,
   min-height: 340px;
 }
 
+.timeline-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.legend-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.legend-chip.day {
+  background: rgba(224, 159, 44, 0.16);
+  color: #9b6500;
+}
+
+.legend-chip.night {
+  background: rgba(42, 108, 90, 0.14);
+  color: #225546;
+}
+
+.timeline-detail {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.timeline-detail strong {
+  color: var(--ink);
+}
+
 .chart-frame svg {
   width: 100%;
   height: auto;
@@ -310,10 +356,49 @@ td,
 
 .timeline-line {
   fill: none;
-  stroke: var(--accent);
   stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.timeline-line.day {
+  stroke: #b14f1f;
+}
+
+.timeline-line.night {
+  stroke: #2f6e62;
+}
+
+.day-night-band.day {
+  fill: rgba(224, 159, 44, 0.08);
+}
+
+.day-night-band.night {
+  fill: rgba(42, 108, 90, 0.07);
+}
+
+.timeline-point {
+  cursor: pointer;
+  stroke: rgba(255, 251, 247, 0.9);
+  stroke-width: 1.2;
+  opacity: 0.48;
+  transition: opacity 140ms ease, r 140ms ease, stroke-width 140ms ease;
+}
+
+.timeline-point.day {
+  fill: #b14f1f;
+}
+
+.timeline-point.night {
+  fill: #2f6e62;
+}
+
+.timeline-point:hover,
+.timeline-point:focus-visible,
+.timeline-point.selected {
+  opacity: 1;
+  stroke-width: 2.4;
+  outline: none;
 }
 
 .threshold-line {
@@ -406,5 +491,9 @@ th {
 
   .hero {
     padding: 22px;
+  }
+
+  .timeline-meta {
+    flex-direction: column;
   }
 }
